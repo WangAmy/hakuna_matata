@@ -171,13 +171,12 @@ export async function POST(request: Request) {
               console.log('📦 GPT 回應內容:', JSON.stringify(response, null, 2));
 
               // ✅ Amplitude GPT 回覆完成追蹤
-              if (typeof window !== 'undefined') {
                 trackEvent('gpt_response_finished', {
                   chatId: id,
                   messageCount: response.messages.length,
                   ...getEventContext(),
                 });
-              }
+              
 
               if (session.user?.id) {
                 try {

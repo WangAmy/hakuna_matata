@@ -2,7 +2,7 @@
 
 import type { Attachment, UIMessage } from 'ai';
 import cx from 'classnames';
-import { trackEvent, getEventContext } from '@/lib/amplitude';
+import { trackEvent } from '@/lib/amplitude';
 import type React from 'react';
 import {
   useRef,
@@ -67,13 +67,6 @@ function PureMultimodalInput({
   const { isAtBottom, scrollToBottom } = useScrollToBottom();
 
   useEffect(() => {
-    trackEvent('test_event', {
-      message: '👋 Hello from Amplitude!',
-      ...getEventContext(),
-    });
-  }, []);
-
-  useEffect(() => {
     if (textareaRef.current) {
       adjustHeight();
     }
@@ -118,7 +111,9 @@ function PureMultimodalInput({
       chatId,
       message: input,
       messageLength: input.length,
-      ...getEventContext(),
+      timestamp: Date.now(),
+      environment: process.env.NODE_ENV,
+      origin: typeof window !== 'undefined' ? window.location.origin : 'unknown',
     });
 
     handleSubmit(undefined, {
@@ -204,6 +199,42 @@ function PureMultimodalInput({
         )}
       </AnimatePresence>
 
+      {/* ✅ 建議動作按鈕 */}
+      {messages.length === 0 && attachments.length === 0 && uploadQueue.length === 0 && (
+        <SuggestedActions
+          append={append}
+          chatId={chatId}
+          selectedVisibilityType={selectedVisibilityType}
+        />
+      )}
+
+      <input
+        type="file"
+        className="fixed -top-4 -left-4 size-0.5 opacity-0 pointer-events-none"
+        ref={fileInputRef}
+        multiple
+        onChange={handleFileChange}
+        tabIndex={-1}
+      />
+
+      {(attachments.length > 0 || uploadQueue.length > 0) && (
+        <div
+          data-testid="attachments-preview"
+          className="flex flex-row gap-2 overflow-x-scroll items-end"
+        >
+          {attachments.map((attachment) => (
+            <PreviewAttachment key={attachment.url} attachment={attachment} />
+          ))}
+          {uploadQueue.map((filename) => (
+            <PreviewAttachment
+              key={filename}
+              attachment={{ url: '', name: filename, contentType: '' }}
+              isUploading={true}
+            />
+          ))}
+        </div>
+      )}
+
       <Textarea
         data-testid="multimodal-input"
         ref={textareaRef}
@@ -227,6 +258,46 @@ function PureMultimodalInput({
           }
         }}
       />
+
+      <div className="absolute bottom-0 p-2 w-fit flex flex-row justify-start">
+        <Button
+          className="rounded-md rounded-bl-lg p-[7px] h-fit dark:border-zinc-700 hover:dark:bg-zinc-900 hover:bg-zinc-200"
+          onClick={(e) => {
+            e.preventDefault();
+            fileInputRef.current?.click();
+          }}
+          disabled={status !== 'ready'}
+          variant="ghost"
+        >
+          <PaperclipIcon size={14} />
+        </Button>
+      </div>
+
+      <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
+        {status === 'submitted' ? (
+          <Button
+            className="rounded-full p-1.5 h-fit border dark:border-zinc-600"
+            onClick={(e) => {
+              e.preventDefault();
+              stop();
+              setMessages((msgs) => msgs);
+            }}
+          >
+            <StopIcon size={14} />
+          </Button>
+        ) : (
+          <Button
+            className="rounded-full p-1.5 h-fit border dark:border-zinc-600"
+            onClick={(e) => {
+              e.preventDefault();
+              submitForm();
+            }}
+            disabled={input.length === 0 || uploadQueue.length > 0}
+          >
+            <ArrowUpIcon size={14} />
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
