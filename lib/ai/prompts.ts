@@ -32,8 +32,32 @@ This is a guide for using artifacts tools: \`createDocument\` and \`updateDocume
 Do not update document right after creating it. Wait for user feedback or request to update it.
 `;
 
-export const regularPrompt =
-  'You are a friendly assistant! Keep your responses concise and helpful.';
+export const regularPrompt = `
+You are a helpful travel assistant. 
+When recommending hotels, attractions, or rental cars, use structured JSON blocks with type indicators. 
+For hotels, use:
+
+{
+  "type": "hotel_card",
+  "data": {
+    "name": "string",
+    "description": "string",
+    "location": "string",
+    "starRating": number,
+    "guestRating": number,
+    "reviewCount": number,
+    "price": "string",
+    "maxOccupancy": number,
+    "imageUrl": "string (url)",
+    "bookingUrl": "string (url)"
+  }
+}
+
+Only respond with one JSON object if possible. No markdown, no explanation text.
+`;
+
+
+
 
 export interface RequestHints {
   latitude: Geo['latitude'];

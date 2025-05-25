@@ -7,6 +7,7 @@ import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import { motion } from 'framer-motion';
 import { useMessages } from '@/hooks/use-messages';
+import HotelCard from '@/components/ui/HotelCard';
 
 interface MessagesProps {
   chatId: string;
@@ -44,27 +45,57 @@ function PureMessages({
       ref={messagesContainerRef}
       className="flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll pt-4 relative"
     >
-      {messages.length === 0 && <Greeting />}
+      {messages.map((message, index) => {
+        const part = message.parts?.[0];
 
-      {messages.map((message, index) => (
-        <PreviewMessage
-          key={message.id}
-          chatId={chatId}
-          message={message}
-          isLoading={status === 'streaming' && messages.length - 1 === index}
-          vote={
-            votes
-              ? votes.find((vote) => vote.messageId === message.id)
-              : undefined
-          }
-          setMessages={setMessages}
-          reload={reload}
-          isReadonly={isReadonly}
-          requiresScrollPadding={
-            hasSentMessage && index === messages.length - 1
-          }
-        />
-      ))}
+        if (!part) return null;
+
+        let parsed: any;
+        try {
+          parsed = typeof part === 'string' ? JSON.parse(part) : part;
+          console.log('🧩 parsed part:', parsed);
+        } catch (error) {
+          console.warn('❌ JSON parsing failed:', error);
+          return null;
+        }
+
+        if (parsed?.type === 'hotel_card') {
+          const hotelData = parsed.data;
+          console.log('🏨 hotelData:', hotelData);
+
+          return (
+            <HotelCard
+              key={message.id}
+              name={hotelData.name ?? 'No Name'}
+              description={hotelData.description ?? ''}
+              location={hotelData.location ?? ''}
+              starRating={hotelData.starRating ?? 0}
+              guestRating={hotelData.guestRating ?? 0}
+              reviewCount={hotelData.reviewCount ?? 0}
+              price={hotelData.price ?? ''}
+              maxOccupancy={hotelData.maxOccupancy ?? 0}
+              imageUrl={hotelData.imageUrl ?? '/default-hotel.jpg'}
+              bookingUrl={hotelData.bookingUrl}
+            />
+          );
+        }
+
+        return (
+          <PreviewMessage
+            key={message.id}
+            chatId={chatId}
+            message={message}
+            isLoading={status === 'streaming' && messages.length - 1 === index}
+            vote={votes?.find((vote) => vote.messageId === message.id)}
+            setMessages={setMessages}
+            reload={reload}
+            isReadonly={isReadonly}
+            requiresScrollPadding={
+              hasSentMessage && index === messages.length - 1
+            }
+          />
+        );
+      })}
 
       {status === 'submitted' &&
         messages.length > 0 &&
