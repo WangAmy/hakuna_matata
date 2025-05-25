@@ -1,3 +1,5 @@
+// lib/amplitude.ts
+
 import { init, track } from '@amplitude/analytics-browser';
 
 export function initAmplitude() {
@@ -7,10 +9,11 @@ export function initAmplitude() {
   });
 }
 
-export function trackEvent(eventName: string, eventProperties?: Record<string, any>) {
-  track(eventName, eventProperties);
+export function trackEvent(name: string, data?: Record<string, any>) {
+  track(name, data);
 }
 
+// ✅ 補上這段！
 export function getEventContext() {
   return {
     timestamp: Date.now(),
