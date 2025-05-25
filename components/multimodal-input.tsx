@@ -113,9 +113,9 @@ function PureMultimodalInput({
       message: input,
       messageLength: input.length,
       timestamp: Date.now(),
-      environment: "production",         // 'development' or 'production'
-      origin: "https://hakunamatata.vercel.app" ,    // 如 https://hakunamatata.vercel.ap
-    });
+      environment: process.env.NODE_ENV,
+    origin: typeof window !== 'undefined' ? window.location.origin : 'unknown',
+  });
   
     handleSubmit(undefined, {
       experimental_attachments: attachments,
