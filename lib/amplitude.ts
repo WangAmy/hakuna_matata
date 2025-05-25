@@ -10,3 +10,11 @@ export function initAmplitude() {
 export function trackEvent(eventName: string, eventProperties?: Record<string, any>) {
   track(eventName, eventProperties);
 }
+
+export function getEventContext() {
+  return {
+    timestamp: Date.now(),
+    environment: process.env.NODE_ENV,
+    origin: typeof window !== 'undefined' ? window.location.origin : 'unknown',
+  };
+}

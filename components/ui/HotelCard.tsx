@@ -1,90 +1,185 @@
-import { useEffect, useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import Image from 'next/image';
-import Link from 'next/link';
-import getValidImageUrl from '@/lib/getValidImageUrl'; // ✅ default 匯入
+'use client';
 
-interface HotelCardProps {
-  name: string;
-  description: string;
-  location: string;
-  starRating: number;
-  guestRating: number;
-  reviewCount: number;
-  price: string;
-  maxOccupancy: number;
-  imageUrl: string;
-  bookingUrl?: string;
-}
+import type { Attachment, UIMessage } from 'ai';
+import cx from 'classnames';
+import { trackEvent, getEventContext } from '@/lib/amplitude'; // ✅ 加上 getEventContext
+import type React from 'react';
+import {
+  useRef,
+  useEffect,
+  useState,
+  useCallback,
+  type Dispatch,
+  type SetStateAction,
+  type ChangeEvent,
+  memo,
+} from 'react';
+import { toast } from 'sonner';
+import { useLocalStorage, useWindowSize } from 'usehooks-ts';
 
-export default function HotelCard({
-  name,
-  description,
-  location,
-  starRating,
-  guestRating,
-  reviewCount,
-  price,
-  maxOccupancy,
-  imageUrl,
-  bookingUrl,
-}: HotelCardProps) {
+import { ArrowUpIcon, PaperclipIcon, StopIcon } from './icons';
+import { PreviewAttachment } from './preview-attachment';
+import { Button } from './ui/button';
+import { Textarea } from './ui/textarea';
+import { SuggestedActions } from './suggested-actions';
+import equal from 'fast-deep-equal';
+import type { UseChatHelpers } from '@ai-sdk/react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowDown } from 'lucide-react';
+import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
+import type { VisibilityType } from './visibility-selector';
 
-  // ✅ 放在這裡，React function component 內部、return 之前
-  const [validImageUrl, setValidImageUrl] = useState<string | null>(null);
+function PureMultimodalInput({
+  chatId,
+  input,
+  setInput,
+  status,
+  stop,
+  attachments,
+  setAttachments,
+  messages,
+  setMessages,
+  append,
+  handleSubmit,
+  className,
+  selectedVisibilityType,
+}: {
+  chatId: string;
+  input: UseChatHelpers['input'];
+  setInput: UseChatHelpers['setInput'];
+  status: UseChatHelpers['status'];
+  stop: () => void;
+  attachments: Array<Attachment>;
+  setAttachments: Dispatch<SetStateAction<Array<Attachment>>>;
+  messages: Array<UIMessage>;
+  setMessages: UseChatHelpers['setMessages'];
+  append: UseChatHelpers['append'];
+  handleSubmit: UseChatHelpers['handleSubmit'];
+  className?: string;
+  selectedVisibilityType: VisibilityType;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { width } = useWindowSize();
+
+  const [localStorageInput, setLocalStorageInput] = useLocalStorage('input', '');
+  const [uploadQueue, setUploadQueue] = useState<Array<string>>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { isAtBottom, scrollToBottom } = useScrollToBottom();
 
   useEffect(() => {
-    setValidImageUrl(getValidImageUrl(imageUrl));
-  }, [imageUrl]);
+    if (textareaRef.current) {
+      adjustHeight();
+    }
+  }, []);
+
+  const adjustHeight = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight + 2}px`;
+    }
+  };
+
+  const resetHeight = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = '98px';
+    }
+  };
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      const domValue = textareaRef.current.value;
+      const finalValue = domValue || localStorageInput || '';
+      setInput(finalValue);
+      adjustHeight();
+    }
+  }, []);
+
+  useEffect(() => {
+    setLocalStorageInput(input);
+  }, [input, setLocalStorageInput]);
+
+  const handleInput = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(event.target.value);
+    adjustHeight();
+  };
+
+  const submitForm = useCallback(() => {
+    window.history.replaceState({}, '', `/chat/${chatId}`);
+
+    // ✅ 使用 getEventContext 自動補足 timestamp、environment、origin
+    trackEvent('chat_submitted', {
+      chatId,
+      message: input,
+      messageLength: input.length,
+      ...getEventContext(),
+    });
+
+    handleSubmit(undefined, {
+      experimental_attachments: attachments,
+    });
+
+    setAttachments([]);
+    setLocalStorageInput('');
+    resetHeight();
+
+    if (width && width > 768) {
+      textareaRef.current?.focus();
+    }
+  }, [attachments, handleSubmit, input, setAttachments, setLocalStorageInput, width, chatId]);
+
+  const uploadFile = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('/api/files/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const { url, pathname, contentType } = data;
+        return { url, name: pathname, contentType };
+      }
+
+      const { error } = await response.json();
+      toast.error(error);
+    } catch (error) {
+      toast.error('Failed to upload file, please try again!');
+    }
+  };
+
+  const handleFileChange = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    setUploadQueue(files.map((file) => file.name));
+
+    try {
+      const uploadPromises = files.map((file) => uploadFile(file));
+      const uploadedAttachments = await Promise.all(uploadPromises);
+      const successfullyUploadedAttachments = uploadedAttachments.filter((a) => a !== undefined);
+      setAttachments((current) => [...current, ...successfullyUploadedAttachments]);
+    } catch (error) {
+      console.error('Error uploading files!', error);
+    } finally {
+      setUploadQueue([]);
+    }
+  }, [setAttachments]);
+
+  useEffect(() => {
+    if (status === 'submitted') scrollToBottom();
+  }, [status, scrollToBottom]);
 
   return (
-    <Card className="w-full max-w-xl rounded-2xl shadow-md border p-4 space-y-4">
-      <CardContent className="space-y-3">
-        <h2 className="text-xl font-semibold">
-          🏨{' '}
-          {bookingUrl ? (
-            <Link
-              href={bookingUrl}
-              className="text-blue-600 hover:underline"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {name}
-            </Link>
-          ) : (
-            name
-          )}
-        </h2>
-        <p>{description}</p>
-        <ul className="list-disc list-inside text-sm">
-          <li><strong>Location:</strong> {location}</li>
-          <li><strong>Star Rating:</strong> {starRating}</li>
-          <li><strong>Guest Rating:</strong> {guestRating} / 10.0 ({reviewCount} reviews)</li>
-          <li><strong>Total Price:</strong> {price}</li>
-          <li><strong>Max Occupancy:</strong> {maxOccupancy}</li>
-        </ul>
-
-        {/* ✅ 只在 client 計算完成後顯示圖片 */}
-        {validImageUrl && (
-          <div className="w-full h-64 relative overflow-hidden rounded-xl">
-            <Image
-              src={validImageUrl}
-              alt={name}
-              fill
-              className="object-cover"
-            />
-          </div>
-        )}
-
-        {bookingUrl && (
-          <Button className="mt-2" asChild>
-            <Link href={bookingUrl} target="_blank">
-              Book Now
-            </Link>
-          </Button>
-        )}
-      </CardContent>
-    </Card>
+    // ... 以下 return 保持不變 ...
   );
 }
+
+export const MultimodalInput = memo(PureMultimodalInput, (prevProps, nextProps) => {
+  if (prevProps.input !== nextProps.input) return false;
+  if (prevProps.status !== nextProps.status) return false;
+  if (!equal(prevProps.attachments, nextProps.attachments)) return false;
+  if (prevProps.selectedVisibilityType !== nextProps.selectedVisibilityType) return false;
+  return true;
+});
