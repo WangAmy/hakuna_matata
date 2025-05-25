@@ -56,7 +56,23 @@ function PureMessages({
           console.log('🧩 parsed part:', parsed);
         } catch (error) {
           console.warn('❌ JSON parsing failed:', error);
-          return null;
+
+          // fallback 顯示純文字訊息
+          return (
+            <PreviewMessage
+              key={message.id}
+              chatId={chatId}
+              message={message}
+              isLoading={status === 'streaming' && messages.length - 1 === index}
+              vote={votes?.find((vote) => vote.messageId === message.id)}
+              setMessages={setMessages}
+              reload={reload}
+              isReadonly={isReadonly}
+              requiresScrollPadding={
+                hasSentMessage && index === messages.length - 1
+              }
+            />
+          );
         }
 
         if (parsed?.type === 'hotel_card') {
