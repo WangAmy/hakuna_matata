@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import Link from 'next/link';
 import getValidImageUrl from '@/lib/getValidImageUrl'; // ✅ default 匯入
-import { trackEvent } from '@/lib/amplitude'; // ✅ 新增這行
 
 interface HotelCardProps {
   name: string;
@@ -31,6 +30,8 @@ export default function HotelCard({
   imageUrl,
   bookingUrl,
 }: HotelCardProps) {
+
+  // ✅ 放在這裡，React function component 內部、return 之前
   const [validImageUrl, setValidImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -64,6 +65,7 @@ export default function HotelCard({
           <li><strong>Max Occupancy:</strong> {maxOccupancy}</li>
         </ul>
 
+        {/* ✅ 只在 client 計算完成後顯示圖片 */}
         {validImageUrl && (
           <div className="w-full h-64 relative overflow-hidden rounded-xl">
             <Image
@@ -77,19 +79,7 @@ export default function HotelCard({
 
         {bookingUrl && (
           <Button className="mt-2" asChild>
-            <Link
-              href={bookingUrl}
-              target="_blank"
-              onClick={() => {
-                trackEvent('hotel_card_clicked', {
-                  hotelName: name,
-                  location,
-                  price,
-                  timestamp: Date.now(),
-                  origin: typeof window !== 'undefined' ? window.location.origin : 'unknown',
-                });
-              }}
-            >
+            <Link href={bookingUrl} target="_blank">
               Book Now
             </Link>
           </Button>
