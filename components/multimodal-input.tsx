@@ -113,6 +113,8 @@ function PureMultimodalInput({
       message: input,
       messageLength: input.length,
       timestamp: Date.now(),
+      environment: "production",         // 'development' or 'production'
+      origin: "https://hakunamatata.vercel.app" ,    // 如 https://hakunamatata.vercel.ap
     });
   
     handleSubmit(undefined, {
