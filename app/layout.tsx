@@ -72,15 +72,18 @@ export default async function RootLayout({
         />
       </head>
       <body className="antialiased">
-        <ThemeProvider
+      <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
           <Toaster position="top-center" />
-          <SessionProvider> {children}</SessionProvider><AmplitudeProvider />
-        </ThemeProvider>
+          <SessionProvider>
+            <AmplitudeProvider />
+            {children}
+  </SessionProvider>
+</ThemeProvider>
       </body>
     </html>
   );
