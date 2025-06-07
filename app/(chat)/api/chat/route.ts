@@ -170,13 +170,11 @@ export async function POST(request: Request) {
               console.log('✅ onFinish triggered');
               console.log('📦 GPT 回應內容:', JSON.stringify(response, null, 2));
 
-              // ✅ Amplitude GPT 回覆完成追蹤
-                trackEvent('gpt_response_finished', {
-                  chatId: id,
-                  messageCount: response.messages.length,
-                  ...getEventContext(),
-                });
-              
+              trackEvent('gpt_response_finished', {
+                chatId: id,
+                messageCount: response.messages.length,
+                ...getEventContext(),
+              });
 
               if (session.user?.id) {
                 try {
@@ -213,8 +211,10 @@ export async function POST(request: Request) {
                               reviewCount: 1240,
                               price: '$3800',
                               maxOccupancy: 4,
-                              imageUrl: 'https://example.com/hotel.jpg',
-                              bookingUrl: 'https://example.com/booking',
+                              imageUrl:
+                                'https://cf.bstatic.com/xdata/images/hotel/max1024x768/12345678.jpg?k=abc123',
+                              bookingUrl:
+                                'https://www.booking.com/hotel/tw/grand-hi-lai.zh-tw.html',
                             },
                           },
                         ],
@@ -238,9 +238,8 @@ export async function POST(request: Request) {
           result.mergeIntoDataStream(dataStream, {
             sendReasoning: true,
           });
-        } catch (err) {
-          console.error('❌ GPT 啟動失敗 streamText error:', err);
-          throw err;
+        } catch (error: any) {
+          console.error('❌ GPT API 請求失敗:', error?.response?.data || error?.message || error);
         }
       },
       onError: () => {
