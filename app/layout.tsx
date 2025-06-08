@@ -72,7 +72,7 @@ export default async function RootLayout({
         />
       </head>
       <body className="antialiased">
-      <ThemeProvider
+        <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
@@ -82,8 +82,8 @@ export default async function RootLayout({
           <SessionProvider>
             <AmplitudeProvider />
             {children}
-  </SessionProvider>
-</ThemeProvider>
+          </SessionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

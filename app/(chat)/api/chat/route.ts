@@ -1,3 +1,10 @@
+import { openai } from '@/lib/openai';
+
+const response = await openai.chat.completions.create({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello, who are you?' }],
+});
+
 import {
   appendClientMessage,
   appendResponseMessages,
@@ -168,7 +175,10 @@ export async function POST(request: Request) {
             },
             onFinish: async ({ response }) => {
               console.log('✅ onFinish triggered');
-              console.log('📦 GPT 回應內容:', JSON.stringify(response, null, 2));
+              console.log(
+                '📦 GPT 回應內容:',
+                JSON.stringify(response, null, 2),
+              );
 
               trackEvent('gpt_response_finished', {
                 chatId: id,
@@ -239,7 +249,10 @@ export async function POST(request: Request) {
             sendReasoning: true,
           });
         } catch (error: any) {
-          console.error('❌ GPT API 請求失敗:', error?.response?.data || error?.message || error);
+          console.error(
+            '❌ GPT API 請求失敗:',
+            error?.response?.data || error?.message || error,
+          );
         }
       },
       onError: () => {
