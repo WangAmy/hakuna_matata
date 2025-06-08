@@ -1,8 +1,8 @@
-import { openai } from '@/lib/openai';
-
-const response = await openai.chat.completions.create({
-  model: 'gpt-4',
-  messages: [{ role: 'user', content: 'Hello, who are you?' }],
+import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+const { text } = await generateText({
+  model: openai('o3-mini'),
+  prompt: 'What is love?',
 });
 
 import {
